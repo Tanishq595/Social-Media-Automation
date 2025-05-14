@@ -31,9 +31,12 @@ const socialMediaTokens = {
   twitter: process.env.TWITTER_TOKEN
 };
 
+// Log server start
+console.log('Starting server with APP_URL:', process.env.APP_URL);
+
 // Submit content
 app.post('/submit-content', async (req, res) => {
-  console.log('Received request to /submit-content');
+  console.log('Received POST /submit-content:', req.body);
   const { content, email } = req.body;
   const postId = uuidv4();
 
@@ -66,7 +69,7 @@ app.post('/submit-content', async (req, res) => {
 
 // Resend email
 app.post('/resend-email/:postId', async (req, res) => {
-  console.log(`Received request to /resend-email/${req.params.postId}`);
+  console.log(`Received POST /resend-email/${req.params.postId}`);
   const postId = req.params.postId;
   if (!posts[postId]) {
     return res.status(404).json({ message: 'Post not found' });
@@ -95,7 +98,7 @@ app.post('/resend-email/:postId', async (req, res) => {
 
 // Confirm content
 app.get('/confirm-content/:postId', async (req, res) => {
-  console.log(`Received request to /confirm-content/${req.params.postId}`);
+  console.log(`Received GET /confirm-content/${req.params.postId}`);
   const postId = req.params.postId;
   if (!posts[postId]) {
     return res.status(404).json({ message: 'Post not found' });
@@ -110,7 +113,7 @@ app.get('/confirm-content/:postId', async (req, res) => {
 
 // Submit image
 app.post('/submit-image', upload.single('image'), async (req, res) => {
-  console.log('Received request to /submit-image');
+  console.log('Received POST /submit-image');
   const postId = req.body.postId;
   if (!posts[postId]) {
     return res.status(404).json({ message: 'Post not found' });
@@ -145,7 +148,7 @@ app.post('/submit-image', upload.single('image'), async (req, res) => {
 
 // Confirm final post
 app.get('/confirm-final/:postId', async (req, res) => {
-  console.log(`Received request to /confirm-final/${req.params.postId}`);
+  console.log(`Received GET /confirm-final/${req.params.postId}`);
   const postId = req.params.postId;
   if (!posts[postId]) {
     return res.status(404).json({ message: 'Post not found' });
@@ -160,7 +163,7 @@ app.get('/confirm-final/:postId', async (req, res) => {
 
 // Submit platforms and post
 app.post('/submit-platforms', async (req, res) => {
-  console.log('Received request to /submit-platforms');
+  console.log('Received POST /submit-platforms:', req.body);
   const { postId, platforms } = req.body;
   if (!posts[postId]) {
     return res.status(404).json({ message: 'Post not found' });
@@ -198,7 +201,7 @@ app.post('/submit-platforms', async (req, res) => {
 
 // Handle form redirects
 app.get('/', (req, res) => {
-  console.log('Received request to /');
+  console.log('Received GET /');
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
