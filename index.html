@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Social Media Post Automator</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+    h1 { text-align: center; color: #333; }
+    label { display: block; margin: 10px 0 5px; }
+    textarea, input[type="text"], input[type="file"], select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+    button { background-color: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background-color: #218838; }
+    #status { margin-top: 20px; color: #333; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Social Media Post Automator</h1>
+    <!-- Step 1: Content Input -->
+    <form id="contentForm">
+      <label for="content">Post Content</label>
+      <textarea id="content" rows="5" required></textarea>
+      <label for="rephrase">Rephrase with AI?</label>
+      <select id="rephrase" required>
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+      </select>
+      <label for="email">Your Gmail Address</label>
+      <input type="text" id="email" required>
+      <button type="submit">Submit Content</button>
+    </form>
+    <!-- Step 2: Image Input (hidden initially) -->
+    <form id="imageForm" class="hidden">
+      <label for="imageChoice">Image Option</label>
+      <select id="imageChoice" required>
+        <option value="upload">Upload Image</option>
+        <option value="generate">Generate Image with AI</option>
+      </select>
+      <div id="uploadSection">
+        <label for="image">Upload Image</label>
+        <input type="file" id="image" accept="image/*">
+      </div>
+      <div id="promptSection" class="hidden">
+        <label for="imagePrompt">Image Prompt</label>
+        <textarea id="imagePrompt" rows="3"></textarea>
+      </div>
+      <button type="submit">Submit Image</button>
+    </form>
+    <!-- Step 3: Platform Selection (hidden initially) -->
+    <form id="platformForm" class="hidden">
+      <label for="platforms">Select Platforms to Post</label>
+      <select id="platforms" multiple required>
+        <option value="facebook">Facebook</option>
+        <option value="instagram">Instagram</option>
+        <option value="twitter">Twitter/X</option>
+      </select>
+      <button type="submit">Post to Social Media</button>
+    </form>
+    <div id="status"></div>
+  </div>
+  <script>
+    const contentForm = document.getElementById('contentForm');
+    const imageForm = document.getElementById('imageForm');
+    const platformForm = document.getElementById('platformForm');
+    const statusDiv = document.getElementById('status');
+    const imageChoice = document.getElementById('imageChoice');
+    const uploadSection = document.getElementById('uploadSection');
+    const promptSection = document.getElementById('promptSection');
+    let currentPostId = null;
+
+    // Handle content form submission
+    contentForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusDiv.textContent = 'Submitting content...';
+      const content = document.getElementById('content').value;
+      const rephrase = document.getElementById('rephrase').value;
+      const email = document.getElementById('email').value;
+
+      try {
+        const response = await fetch('http://localhost:3000/submit-content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, rephrase, email })
+        });
+        const result = await response.json();
+        currentPostId = result.postId;
+        statusDiv.textContent = result.message;
+      } catch (error) {
+        statusDiv.textContent = 'Error: ' + error.message;
+      }
+    });
+
+    // Toggle image upload vs. prompt
+    imageChoice.addEventListener('change', () => {
+      if (imageChoice.value === 'upload') {
+        uploadSection.classList.remove('hidden');
+        promptSection.classList.add('hidden');
+        document.getElementById('image').required = true;
+        document.getElementById('imagePrompt').required = false;
+      } else {
+        uploadSection.classList.add('hidden');
+        promptSection.classList.remove('hidden');
+        document.getElementById('image').required = false;
+        document.getElementById('imagePrompt').required = true;
+      }
+    });
+
+    // Handle image form submission
+    imageForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusDiv.textContent = 'Submitting image...';
+      const formData = new FormData();
+      formData.append('postId', currentPostId);
+      formData.append('imageChoice', document.getElementById('imageChoice').value);
+      if (imageChoice.value === 'upload') {
+        formData.append('image', document.getElementById('image').files[0]);
+      } else {
+        formData.append('imagePrompt', document.getElementById('imagePrompt').value);
+      }
+
+      try {
+        const response = await fetch('http://localhost:3000/submit-image', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await response.json();
+        statusDiv.textContent = result.message;
+      } catch (error) {
+        statusDiv.textContent = 'Error: ' + error.message;
+      }
+    });
+
+    // Handle platform form submission
+    platformForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusDiv.textContent = 'Posting to social media...';
+      const platforms = Array.from(document.getElementById('platforms').selectedOptions).map(opt => opt.value);
+
+      try {
+        const response = await fetch('http://localhost:3000/submit-platforms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postId: currentPostId, platforms })
+        });
+        const result = await response.json();
+        statusDiv.textContent = result.message;
+      } catch (error) {
+        statusDiv.textContent = 'Error: ' + error.message;
+      }
+    });
+
+    // Function to show next form
+    function showForm(formId) {
+      contentForm.classList.add('hidden');
+      imageForm.classList.add('hidden');
+      platformForm.classList.add('hidden');
+      document.getElementById(formId).classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>

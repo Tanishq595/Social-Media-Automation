@@ -1,0 +1,17 @@
+{
+  "name": "social-media-automator",
+  "version": "1.0.0",
+  "description": "Automates social media posting with AI rephrasing and image generation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.15",
+    "uuid": "^10.0.0"
+  }
+}
