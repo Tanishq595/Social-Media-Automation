@@ -7,10 +7,6 @@
   },
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/server.js"
-    },
-    {
       "source": "/submit-content",
       "destination": "/api/server.js"
     },
