@@ -51,7 +51,7 @@ app.post('/submit-content', async (req, res) => {
     posts[postId] = { content: finalContent, email, status: 'pending_content' };
 
     // Send confirmation email
-    const confirmUrl = `http://localhost:${port}/confirm-content/${postId}`;
+    const confirmUrl = `https://social-media-automation-swart.vercel.app/confirm-content/${postId}`;
     const mailOptions = {
       from: 'tanishqagarwal595@gmail.com',
       to: email,
@@ -76,7 +76,7 @@ app.get('/confirm-content/:postId', async (req, res) => {
   posts[postId].status = 'content_confirmed';
   res.send(`
     <script>
-      window.location.href = 'http://localhost:3000?form=imageForm&postId=${postId}';
+      window.location.href = 'https://social-media-automation-swart.vercel.app/?form=imageForm&postId=${postId}';
     </script>
   `);
 });
@@ -108,9 +108,9 @@ app.post('/submit-image', upload.single('image'), async (req, res) => {
   posts[postId].status = 'pending_final';
 
   // Send final confirmation email
-  const confirmUrl = `http://localhost:${port}/confirm-final/${postId}`;
+  const confirmUrl = `https://social-media-automation-swart.vercel.app/confirm-final/${postId}`;
   const mailOptions = {
-    from: 'your-email@gmail.com',
+    from: 'tanishqagarwal595@gmail.com',
     to: posts[postId].email,
     subject: 'Confirm Final Post',
     html: `<p>Review the final post:</p><p>Content: ${posts[postId].content}</p><p>Image: <img src="${imageUrl}" width="200"></p><p><a href="${confirmUrl}">Approve</a></p>`
@@ -130,7 +130,7 @@ app.get('/confirm-final/:postId', async (req, res) => {
   posts[postId].status = 'final_confirmed';
   res.send(`
     <script>
-      window.location.href = 'http://localhost:3000?form=platformForm&postId=${postId}';
+      window.location.href = 'https://social-media-automation-swart.vercel.app?form=platformForm&postId=${postId}';
     </script>
   `);
 });
@@ -180,5 +180,5 @@ app.get('/', (req, res) => {
 
 // Start server
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server running at https://social-media-automation-swart.vercel.app/`);
 });
