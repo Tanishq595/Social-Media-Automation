@@ -1,10 +1,12 @@
+require('dotenv').config();
 const express = require('express');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const path = require('path');
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
@@ -18,51 +20,75 @@ const posts = {};
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'tanishqagarwal595@gmail.com', // Replace with your Gmail
-    pass: 'vsfv eecd ifmn pwqb' // Replace with Gmail App Password
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS
   }
 });
 
-// Social media API tokens (replace with your tokens)
+// Social media API tokens
 const socialMediaTokens = {
-  facebook: 'your-facebook-access-token',
-  instagram: 'your-instagram-access-token',
-  twitter: 'your-twitter-api-key' // Includes API Key, Secret, Access Token, etc.
+  facebook: process.env.FACEBOOK_TOKEN,
+  instagram: process.env.INSTAGRAM_TOKEN,
+  twitter: process.env.TWITTER_TOKEN
 };
 
 // Submit content
 app.post('/submit-content', async (req, res) => {
-  const { content, rephrase, email } = req.body;
+  const { content, email } = req.body;
   const postId = uuidv4();
-  let finalContent = content;
 
   try {
-    // Rephrase if requested
-    if (rephrase === 'yes') {
-      const response = await axios.post('https://api-inference.huggingface.co/models/gpt2', {
-        inputs: `Rephrase: ${content}`
-      }, {
-        headers: { Authorization: 'Bearer your-huggingface-api-key' }
-      });
-      finalContent = response.data[0].generated_text.replace('Rephrase: ', '').trim();
-    }
-
     // Store post
-    posts[postId] = { content: finalContent, email, status: 'pending_content' };
+    posts[postId] = { content, email, status: 'pending_content' };
 
     // Send confirmation email
-    const confirmUrl = `https://social-media-automation-swart.vercel.app/confirm-content/${postId}`;
+    const confirmUrl = `${process.env.APP_URL}/confirm-content/${postId}`;
     const mailOptions = {
-      from: 'tanishqagarwal595@gmail.com',
+      from: process.env.GMAIL_USER,
       to: email,
       subject: 'Confirm Post Content',
-      html: `<p>Review the content:</p><p>${finalContent}</p><p><a href="${confirmUrl}">Approve</a></p>`
+      html: `<p>Review the content:</p><p>${content}</p><p><a href="${confirmUrl}">Approve</a></p>`
     };
-    await transporter.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.log('Email error:', error);
+      } else {
+        console.log('Email sent:', info.response);
+      }
+    });
 
     res.json({ message: 'Content submitted. Check your email for confirmation.', postId });
   } catch (error) {
+    console.log('Error processing content:', error);
     res.status(500).json({ message: 'Error processing content: ' + error.message });
+  }
+});
+
+// Resend email
+app.post('/resend-email/:postId', async (req, res) => {
+  const postId = req.params.postId;
+  if (!posts[postId]) {
+    return res.status(404).json({ message: 'Post not found' });
+  }
+  try {
+    const confirmUrl = `${process.env.APP_URL}/confirm-content/${postId}`;
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: posts[postId].email,
+      subject: 'Confirm Post Content',
+      html: `<p>Review the content:</p><p>${posts[postId].content}</p><p><a href="${confirmUrl}">Approve</a></p>`
+    };
+    await transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.log('Email error:', error);
+      } else {
+        console.log('Email sent:', info.response);
+      }
+    });
+    res.json({ message: 'Confirmation email resent. Check your email.' });
+  } catch (error) {
+    console.log('Error resending email:', error);
+    res.status(500).json({ message: 'Error resending email: ' + error.message });
   }
 });
 
@@ -70,13 +96,12 @@ app.post('/submit-content', async (req, res) => {
 app.get('/confirm-content/:postId', async (req, res) => {
   const postId = req.params.postId;
   if (!posts[postId]) {
-    return res.status(404).send('Post not found');
+    return res.status(404).json({ message: 'Post not found' });
   }
-
   posts[postId].status = 'content_confirmed';
   res.send(`
     <script>
-      window.location.href = 'https://social-media-automation-swart.vercel.app/?form=imageForm&postId=${postId}';
+      window.location.href = '${process.env.APP_URL}?form=imageForm&postId=${postId}';
     </script>
   `);
 });
@@ -87,35 +112,30 @@ app.post('/submit-image', upload.single('image'), async (req, res) => {
   if (!posts[postId]) {
     return res.status(404).json({ message: 'Post not found' });
   }
-
   let imageUrl = '';
-  if (req.body.imageChoice === 'upload' && req.file) {
-    imageUrl = `/uploads/${req.file.filename}`; // In production, use cloud storage
-  } else if (req.body.imageChoice === 'generate') {
-    try {
-      const response = await axios.post('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2', {
-        inputs: req.body.imagePrompt || posts[postId].content.slice(0, 50)
-      }, {
-        headers: { Authorization: 'Bearer your-huggingface-api-key' }
-      });
-      imageUrl = response.data.image_url || 'https://via.placeholder.com/300'; // Adjust based on API
-    } catch (error) {
-      return res.status(500).json({ message: 'Error generating image: ' + error.message });
-    }
+  if (req.file) {
+    imageUrl = `/uploads/${req.file.filename}`; // Note: Use cloud storage for production
+  } else {
+    return res.status(400).json({ message: 'Image upload required' });
   }
-
   posts[postId].imageUrl = imageUrl;
   posts[postId].status = 'pending_final';
 
   // Send final confirmation email
-  const confirmUrl = `https://social-media-automation-swart.vercel.app/confirm-final/${postId}`;
+  const confirmUrl = `${process.env.APP_URL}/confirm-final/${postId}`;
   const mailOptions = {
-    from: 'tanishqagarwal595@gmail.com',
+    from: process.env.GMAIL_USER,
     to: posts[postId].email,
     subject: 'Confirm Final Post',
-    html: `<p>Review the final post:</p><p>Content: ${posts[postId].content}</p><p>Image: <img src="${imageUrl}" width="200"></p><p><a href="${confirmUrl}">Approve</a></p>`
+    html: `<p>Review the final post:</p><p>Content: ${posts[postId].content}</p><p>Image: <img src="${process.env.APP_URL}${imageUrl}" width="200"></p><p><a href="${confirmUrl}">Approve</a></p>`
   };
-  await transporter.sendMail(mailOptions);
+  await transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.log('Email error:', error);
+    } else {
+      console.log('Email sent:', info.response);
+    }
+  });
 
   res.json({ message: 'Image submitted. Check your email for final confirmation.' });
 });
@@ -124,13 +144,12 @@ app.post('/submit-image', upload.single('image'), async (req, res) => {
 app.get('/confirm-final/:postId', async (req, res) => {
   const postId = req.params.postId;
   if (!posts[postId]) {
-    return res.status(404).send('Post not found');
+    return res.status(404).json({ message: 'Post not found' });
   }
-
   posts[postId].status = 'final_confirmed';
   res.send(`
     <script>
-      window.location.href = 'https://social-media-automation-swart.vercel.app?form=platformForm&postId=${postId}';
+      window.location.href = '${process.env.APP_URL}?form=platformForm&postId=${postId}';
     </script>
   `);
 });
@@ -141,44 +160,43 @@ app.post('/submit-platforms', async (req, res) => {
   if (!posts[postId]) {
     return res.status(404).json({ message: 'Post not found' });
   }
-
   const post = posts[postId];
   try {
     for (const platform of platforms) {
       if (platform === 'facebook') {
         await axios.post('https://graph.facebook.com/v12.0/me/feed', {
           message: post.content,
-          link: post.imageUrl,
+          link: `${process.env.APP_URL}${post.imageUrl}`,
           access_token: socialMediaTokens.facebook
         });
       } else if (platform === 'instagram') {
         await axios.post('https://graph.instagram.com/v12.0/me/media', {
-          image_url: post.imageUrl,
+          image_url: `${process.env.APP_URL}${post.imageUrl}`,
           caption: post.content,
           access_token: socialMediaTokens.instagram
         });
       } else if (platform === 'twitter') {
         await axios.post('https://api.twitter.com/2/tweets', {
-          text: post.content + (post.imageUrl ? ` ${post.imageUrl}` : '')
+          text: post.content + (post.imageUrl ? ` ${process.env.APP_URL}${post.imageUrl}` : '')
         }, {
           headers: { Authorization: `Bearer ${socialMediaTokens.twitter}` }
         });
       }
     }
-
     posts[postId].status = 'posted';
     res.json({ message: 'Post published successfully!' });
   } catch (error) {
+    console.log('Error posting:', error);
     res.status(500).json({ message: 'Error posting: ' + error.message });
   }
 });
 
 // Handle form redirects
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start server
 app.listen(port, () => {
-  console.log(`Server running at https://social-media-automation-swart.vercel.app/`);
+  console.log(`Server running at ${process.env.APP_URL}`);
 });
