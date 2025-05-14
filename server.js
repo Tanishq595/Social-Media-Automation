@@ -132,12 +132,12 @@ app.post('/submit-image', upload.single('image'), async (req, res) => {
   await transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
       console.log('Email error:', error);
-    } else {
-      console.log('Email sent:', info.response);
+      res.status(500).json({ message: 'Error sending confirmation email: ' + error.message });
+      return;
     }
+    console.log('Email sent:', info.response);
+    res.json({ message: 'Image submitted. Check your email for final confirmation.' });
   });
-
-  res.json({ message: 'Image submitted. Check your email for final confirmation.' });
 });
 
 // Confirm final post
