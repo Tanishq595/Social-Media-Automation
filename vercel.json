@@ -1,8 +1,42 @@
 {
+  "functions": {
+    "api/server.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/api/server.js"
+    },
+    {
+      "source": "/submit-content",
+      "destination": "/api/server.js"
+    },
+    {
+      "source": "/submit-image",
+      "destination": "/api/server.js"
+    },
+    {
+      "source": "/submit-platforms",
+      "destination": "/api/server.js"
+    },
+    {
+      "source": "/resend-email/:postId",
+      "destination": "/api/server.js"
+    },
+    {
+      "source": "/confirm-content/:postId",
+      "destination": "/api/server.js"
+    },
+    {
+      "source": "/confirm-final/:postId",
+      "destination": "/api/server.js"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/server.js"
+      "destination": "/public/index.html"
     }
   ],
   "cleanUrls": true,
